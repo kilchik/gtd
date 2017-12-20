@@ -11,10 +11,6 @@ func printRequest(r *http.Request) {
 	logD.Printf(">> %v", r)
 }
 
-//https://www.w3schools.com/bootstrap/tryit.asp?filename=trybs_pills_dynamic&stacked=h
-//http://ndersson.me/post/capturing_status_code_in_net_http/
-//https://godoc.org/golang.org/x/net/context
-
 type loggingResponseWriter struct {
 	http.ResponseWriter
 	response   string
