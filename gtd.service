@@ -6,7 +6,7 @@ After=network.target
 Type=simple
 User=gtd
 PermissionsStartOnly=true
-ExecStart=/usr/sbin/gtd -config=/etc/gtd/gtd.conf
+ExecStart=/usr/sbin/gtd -conf=/etc/gtd/gtd.conf
 Restart=always
 StartLimitBurst=7
 LimitNOFILE=1024
