@@ -8,7 +8,7 @@ ulimit -n 8192
 #### need to change ####
 export BINFILE="/usr/sbin/gtd"
 export INSTANCE=""
-export OPTIONS="-config=/etc/gtd/gtd.conf"
+export OPTIONS="-conf=/etc/gtd/gtd.conf"
 export USER="gtd"
 ########################
 

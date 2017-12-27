@@ -8,8 +8,8 @@ User=gtd
 PermissionsStartOnly=true
 ExecStart=/usr/sbin/gtd -config=/etc/gtd/gtd.conf
 Restart=always
-StartLimitBurst=1000000
-LimitNOFILE=65535
+StartLimitBurst=7
+LimitNOFILE=1024
 
 [Install]
 WantedBy=multi-user.target
