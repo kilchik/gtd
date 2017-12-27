@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/BurntSushi/toml"
 )
@@ -44,9 +43,6 @@ func (c *configImpl) Validate() error {
 	}
 	if len(c.params.DBPath) == 0 {
 		return fmt.Errorf(logPrefix + "db_path is not set")
-	}
-	if _, err := os.Stat(c.params.DBPath); os.IsNotExist(err) {
-		return fmt.Errorf(logPrefix+"db file %q does not exists", c.params.DBPath)
 	}
 	return nil
 }

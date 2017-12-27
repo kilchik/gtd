@@ -40,7 +40,7 @@ func initLoggers(debugMode bool) {
 	}
 	logD = log.New(debugHandle, "[D] ", log.Ldate|log.Ltime|log.Lshortfile)
 	logI = log.New(os.Stdout, "[I] ", log.Ldate|log.Ltime|log.Lshortfile)
-	logI = log.New(os.Stdout, "[W] ", log.Ldate|log.Ltime|log.Lshortfile)
+	logW = log.New(os.Stdout, "[W] ", log.Ldate|log.Ltime|log.Lshortfile)
 	logE = log.New(os.Stderr, "[E] ", log.Ldate|log.Ltime)
 }
 
@@ -103,11 +103,26 @@ func main() {
 
 	// prepare db
 	var err error
-	if db, err = sql.Open("sqlite3", conf.params.DBPath); err != nil {
-		log.Fatalf("open db: %v", err)
+	_, err = os.Stat(conf.params.DBPath)
+	dbExists := err == nil
+
+	db, err = sql.Open("sqlite3", conf.params.DBPath)
+	if err != nil {
+		logE.Fatalf("create db connection: %v", err)
 	}
-	if err = db.Ping(); err != nil {
-		log.Fatalf("ping db: %v", err)
+	if db == nil {
+		logE.Fatalf("failed to create db connection")
+	}
+	if !dbExists {
+		logI.Println("db does not exist; creating tables")
+		if err = createTables(); err != nil {
+			log.Fatalf("create tables: %v", err)
+		}
+	} else {
+		logI.Println("db already exists")
+		if err = db.Ping(); err != nil {
+			log.Fatalf("ping db: %v", err)
+		}
 	}
 
 	// initialize local variables
@@ -130,6 +145,79 @@ func main() {
 
 	logI.Println("start listening :)")
 	http.ListenAndServe(":1234", nil)
+}
+
+func createTables() error {
+	var err error
+
+	// activities
+	if _, err = db.Exec(`
+	create table activities
+	(
+		id INTEGER INTEGER PRIMARY KEY,
+		name TEXT not null,
+		npom INT default 0,
+		createtime TIMESTAMP not null,
+		category_id INTEGER,
+		vorder INT default 0 not null,
+		foreign key (category_id) references categories (id)
+	);
+	`); err != nil {
+		return fmt.Errorf("create table 'activities': %v", err)
+	}
+
+	// categories
+	if _, err = db.Exec(`
+	create table categories
+	(
+		id INTEGER INTEGER PRIMARY KEY,
+		name TEXT not null,
+		user_id INTEGER,
+		foreign key (user_id) references users (id)
+	);
+	`); err != nil {
+		return fmt.Errorf("create table 'categories': %v", err)
+	}
+
+	// history
+	if _, err = db.Exec(`
+	create table history
+	(
+		id INTEGER INTEGER PRIMARY KEY,
+		tstamp TIMESTAMP not null,
+		done INT default 0,
+		activity_id INTEGER
+			constraint history_activities_id_fk
+				references activities (id)
+					on delete cascade,
+		user_id INTEGER,
+		foreign key (user_id) references users (id)
+	);
+	`); err != nil {
+		return fmt.Errorf("create table 'history': %v", err)
+	}
+
+	// users
+	if _, err = db.Exec(`
+	create table users
+	(
+		id INTEGER PRIMARY KEY,
+		registered TIMESTAMP,
+		fb_id VARCHAR not null,
+		name VARCHAR
+	);
+	`); err != nil {
+		return fmt.Errorf("create table 'users': %v", err)
+	}
+
+	if _, err = db.Exec(`
+	create unique index users_fb_id_uindex
+		on users (fb_id);
+	`); err != nil {
+		return fmt.Errorf("create index for 'users.fb_id': %v", err)
+	}
+
+	return nil
 }
 
 // Handlers -->

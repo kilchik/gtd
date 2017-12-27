@@ -353,7 +353,7 @@ function createCategory() {
         },
         complete: function (xobj, code) {
             if (xobj.code !== 200) {
-                logW("categories/new completed with code: ", code);
+                logD("categories/new completed with code: ", xobj.code);
             }
         }
     });
