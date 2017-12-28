@@ -132,7 +132,7 @@ func main() {
 	}
 
 	// initialize handlers
-	http.Handle(conf.params.StaticPath+"/", http.StripPrefix(conf.params.StaticPath, http.FileServer(http.Dir("static"))))
+	http.Handle(conf.params.StaticPath+"/", http.StripPrefix(conf.params.StaticPath, http.FileServer(http.Dir(conf.params.StaticPath))))
 	http.HandleFunc("/", gtdHandler)
 
 	http.Handle("/users/new", newHandlerWithAuthCheck(newUserHandler, allowed))
