@@ -25,6 +25,7 @@ func InitConfig(path string, c Config) error {
 type configParams struct {
 	AllowedFbUids []string `toml:"allowed_fb_uids"`
 	DBPath        string   `toml:"db_path"`
+	StaticPath    string   `toml:"static_path"`
 }
 
 type configImpl struct {
@@ -43,6 +44,9 @@ func (c *configImpl) Validate() error {
 	}
 	if len(c.params.DBPath) == 0 {
 		return fmt.Errorf(logPrefix + "db_path is not set")
+	}
+	if len(c.params.StaticPath) == 0 {
+		return fmt.Errorf(logPrefix + "static_path is not set")
 	}
 	return nil
 }

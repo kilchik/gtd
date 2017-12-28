@@ -132,7 +132,7 @@ func main() {
 	}
 
 	// initialize handlers
-	http.Handle("/static/", http.StripPrefix("/static", http.FileServer(http.Dir("static"))))
+	http.Handle(conf.params.StaticPath+"/", http.StripPrefix(conf.params.StaticPath, http.FileServer(http.Dir("static"))))
 	http.HandleFunc("/", gtdHandler)
 
 	http.Handle("/users/new", newHandlerWithAuthCheck(newUserHandler, allowed))
@@ -154,7 +154,7 @@ func createTables() error {
 	if _, err = db.Exec(`
 	create table activities
 	(
-		id INTEGER INTEGER PRIMARY KEY,
+		id INTEGER PRIMARY KEY,
 		name TEXT not null,
 		npom INT default 0,
 		createtime TIMESTAMP not null,
@@ -170,7 +170,7 @@ func createTables() error {
 	if _, err = db.Exec(`
 	create table categories
 	(
-		id INTEGER INTEGER PRIMARY KEY,
+		id INTEGER PRIMARY KEY,
 		name TEXT not null,
 		user_id INTEGER,
 		foreign key (user_id) references users (id)
@@ -183,7 +183,7 @@ func createTables() error {
 	if _, err = db.Exec(`
 	create table history
 	(
-		id INTEGER INTEGER PRIMARY KEY,
+		id INTEGER PRIMARY KEY,
 		tstamp TIMESTAMP not null,
 		done INT default 0,
 		activity_id INTEGER
