@@ -132,8 +132,17 @@ func main() {
 	}
 
 	// initialize handlers
-	http.Handle(conf.params.StaticPath+"/", http.StripPrefix(conf.params.StaticPath, http.FileServer(http.Dir(conf.params.StaticPath))))
-	http.HandleFunc("/", gtdHandler)
+	fs := http.FileServer(http.Dir(conf.params.StaticPath))
+
+	http.Handle("/static/", http.StripPrefix("/static/", fs))
+	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		t, err := template.ParseFiles(conf.params.StaticPath + "html/index.html")
+		if err != nil {
+			internalError("parse template file", err, w)
+			return
+		}
+		t.Execute(w, nil)
+	})
 
 	http.Handle("/users/new", newHandlerWithAuthCheck(newUserHandler, allowed))
 	http.Handle("/categories/new", newHandlerWithAuthCheck(newCategoryHandler, allowed))
@@ -508,15 +517,6 @@ IFNULL(max(vorder), 0) FROM activities) + 1);`)
 
 	w.WriteHeader(http.StatusCreated)
 	fmt.Fprint(w, fmt.Sprintf(`{"id":%d}`, newId))
-}
-
-func gtdHandler(w http.ResponseWriter, r *http.Request) {
-	t, err := template.ParseFiles("static/html/index.html")
-	if err != nil {
-		internalError("parse template file", err, w)
-		return
-	}
-	t.Execute(w, nil)
 }
 
 // <-- Handlers
