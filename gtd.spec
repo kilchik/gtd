@@ -62,12 +62,12 @@ echo $SRC_ROOT
 mkdir -p %{__builddir}
 
 export GOPATH="$SRC_ROOT"
-echo '^^^'
-echo %{__builddir}
 go get -u github.com/golang/dep/cmd/dep
-go get %{__repourl}
-dep ensure
-go build -o %{__builddir}/%{name} %{__repourl}
+go get -d %{__repourl}
+cd src/%{__repourl}
+$GOPATH/bin/dep ensure
+go build -o %{__builddir}/%{name} 
+cd $SRC_ROOT
 
 %install
 [ "%{buildroot}" != "/" ] && rm -fr %{buildroot}
