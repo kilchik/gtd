@@ -33,6 +33,7 @@ Go version: %{go_version}
 %define __srcdir        *.go
 %define __datadir       %{nil}
 %define __confdir       /etc/%{name}
+%define __logconfdir    /etc/syslog-ng/conf.d
 %define __repourl       github.com/kilchik/%{name}
 %define __staticdir     /usr/share/%{name}/static
 
@@ -77,11 +78,13 @@ cd $SRC_ROOT
 %{__mkdir} -p %{buildroot}%{__logdir}
 %{__mkdir} -p %{buildroot}%{__rundir}
 %{__mkdir} -p %{buildroot}%{__confdir}
+%{__mkdir} -p %{buildroot}%{__logconfdir}
 %{__mkdir} -p %{buildroot}%{__staticdir}
 [ "%{__datadir}" != "" ] && %{__mkdir} -p %{buildroot}%{__datadir}
 
 %{__install} -pD -m 755 build/%{name}  %{buildroot}/%{__bindir}/%{name}
 %{__install} -pD -m 644 gtd.conf  %{buildroot}/%{__confdir}
+%{__install} -pD -m 644 src/%{__repourl}/%{name}_syslog-ng.conf  %{buildroot}/%{__logconfdir}/%{name}.conf
 cp -r src/%{__repourl}/static/*  %{buildroot}/%{__staticdir}
 
 %{__mkdir} -p %{buildroot}/usr/lib/systemd/system/
@@ -115,5 +118,6 @@ systemctl daemon-reload >/dev/null 2>&1 || :
 %{__staticdir}/js/script.js
 /usr/lib/systemd/system/%{name}.service
 %{__confdir}/%{name}.conf
+%{__logconfdir}/%{name}.conf
 
 %config(noreplace) %{__confdir}/%{name}.conf
