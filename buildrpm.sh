@@ -58,7 +58,7 @@ mkdir -p $BUILDROOT
 
 mkdir ${SOURCE_NAME}
 cd ${SOURCE_NAME}
-GOPATH=$(pwd) go get github.com/kilchik/gtd
+GOPATH=$(pwd) go get -d github.com/kilchik/gtd
 cp ../gtd.conf .
 cd ..
 tar -zcvf ${RPM_TOPDIR}/SOURCES/${SOURCE_NAME}.tar.gz ${SOURCE_NAME}

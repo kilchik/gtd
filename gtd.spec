@@ -33,7 +33,7 @@ Go version: %{go_version}
 %define __srcdir        *.go
 %define __datadir       %{nil}
 %define __confdir       /etc/%{name}
-%define __repourl       github.com/kilchik/gtd
+%define __repourl       github.com/kilchik/%{name}
 %define __staticdir     /usr/share/%{name}/static
 
 %define gtd_home %{_localstatedir}/cache/gtd
@@ -59,14 +59,15 @@ cd %{source_name}
 SRC_ROOT=$(pwd)
 echo $SRC_ROOT
 
-mkdir -p %{__builddir}
+BUILDDIR=$(pwd)/build
+mkdir -p $BUILDDIR
 
 export GOPATH="$SRC_ROOT"
 go get -u github.com/golang/dep/cmd/dep
 go get -d %{__repourl}
 cd src/%{__repourl}
 $GOPATH/bin/dep ensure
-go build -o %{__builddir}/%{name} 
+go build -o $BUILDDIR/%{name} 
 cd $SRC_ROOT
 
 %install
@@ -79,7 +80,7 @@ cd $SRC_ROOT
 %{__mkdir} -p %{buildroot}%{__staticdir}
 [ "%{__datadir}" != "" ] && %{__mkdir} -p %{buildroot}%{__datadir}
 
-%{__install} -pD -m 755 %{__builddir}/%{name}  %{buildroot}/%{__bindir}/%{name}
+%{__install} -pD -m 755 build/%{name}  %{buildroot}/%{__bindir}/%{name}
 %{__install} -pD -m 644 gtd.conf  %{buildroot}/%{__confdir}
 cp -r src/%{__repourl}/static/*  %{buildroot}/%{__staticdir}
 
