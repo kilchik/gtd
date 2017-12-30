@@ -23,6 +23,7 @@ func InitConfig(path string, c Config) error {
 }
 
 type configParams struct {
+	ListenPort    int      `toml:"listen_port"`
 	AllowedFbUids []string `toml:"allowed_fb_uids"`
 	DBPath        string   `toml:"db_path"`
 	StaticPath    string   `toml:"static_path"`
@@ -39,6 +40,9 @@ func (c *configImpl) Params() interface{} {
 
 func (c *configImpl) Validate() error {
 	logPrefix := "parsing config: "
+	if c.params.ListenPort == 0 {
+		return fmt.Errorf(logPrefix + "listen_port is not set")
+	}
 	if len(c.params.AllowedFbUids) == 0 {
 		logW.Println(logPrefix + "no users in allowed list - allowed all")
 	}

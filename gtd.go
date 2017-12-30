@@ -152,8 +152,8 @@ func main() {
 	http.Handle("/history", newHandlerWithAuthCheck(historyHandler, allowed))
 	http.Handle("/history/do", newHandlerWithAuthCheck(doHandler, allowed))
 
-	logI.Println("start listening :)")
-	http.ListenAndServe(":1234", nil)
+	logI.Printf("start listening port %d :)", conf.params.ListenPort)
+	http.ListenAndServe(fmt.Sprintf(":%d", conf.params.ListenPort), nil)
 }
 
 func createTables() error {
