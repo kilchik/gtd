@@ -9,6 +9,8 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/gorilla/mux"
+
 	"flag"
 	"io/ioutil"
 	"os"
@@ -50,8 +52,10 @@ type userCtx struct {
 	fbName string
 }
 
+type handleFunc func(user *userCtx, w http.ResponseWriter, r *http.Request, logPrefix string)
+
 type handlerWithAuthCheck struct {
-	handle  func(user *userCtx, w http.ResponseWriter, r *http.Request, logPrefix string)
+	handle  handleFunc
 	allowed map[string]bool
 }
 
@@ -135,7 +139,13 @@ func main() {
 	fs := http.FileServer(http.Dir(conf.params.StaticPath))
 
 	http.Handle("/static/", http.StripPrefix("/static/", fs))
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+
+	limitAllowedUsers := func(f handleFunc) handlerWithAuthCheck {
+		return newHandlerWithAuthCheck(f, allowed)
+	}
+
+	router := mux.NewRouter()
+	router.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		t, err := template.ParseFiles(conf.params.StaticPath + "html/index.html")
 		if err != nil {
 			internalError("parse template file", err, w)
@@ -144,13 +154,23 @@ func main() {
 		t.Execute(w, nil)
 	})
 
-	http.Handle("/users/new", newHandlerWithAuthCheck(newUserHandler, allowed))
-	http.Handle("/categories/new", newHandlerWithAuthCheck(newCategoryHandler, allowed))
-	http.Handle("/categories", newHandlerWithAuthCheck(categoriesListHandler, allowed))
-	http.Handle("/activities/new", newHandlerWithAuthCheck(newActivityHandler, allowed))
-	http.Handle("/activities", newHandlerWithAuthCheck(activitiesListHandler, allowed))
-	http.Handle("/history", newHandlerWithAuthCheck(historyHandler, allowed))
-	http.Handle("/history/do", newHandlerWithAuthCheck(doHandler, allowed))
+	router.Handle("/users/new", limitAllowedUsers(newUserHandler)).Methods("POST")
+
+	routerCats := router.PathPrefix("/categories").Subrouter()
+	routerCats.Handle("/", limitAllowedUsers(categoriesListHandler)).Methods("GET")
+	routerCats.Handle("/new", limitAllowedUsers(newCategoryHandler)).Methods("POST")
+	routerCats.Handle("/{id:[0-9]+}", limitAllowedUsers(removeCategoryHandler)).Methods("DELETE")
+
+	routerActs := router.PathPrefix("/activities").Subrouter()
+	routerActs.Handle("", limitAllowedUsers(activitiesListHandler)).Methods("GET").
+		Queries("cat_id", "{cat_id:[0-9]+}")
+	routerActs.Handle("/new", limitAllowedUsers(newActivityHandler)).Methods("POST")
+
+	router.Handle("/history", limitAllowedUsers(historyHandler)).Methods("GET").
+		Queries("cat_id", "{cat_id:[0-9]+}")
+	router.Handle("/history/do", limitAllowedUsers(doHandler)).Methods("POST")
+
+	http.Handle("/", router)
 
 	logI.Printf("start listening port %d :)", conf.params.ListenPort)
 	http.ListenAndServe(fmt.Sprintf(":%d", conf.params.ListenPort), nil)
@@ -427,6 +447,10 @@ func newCategoryHandler(user *userCtx, w http.ResponseWriter, r *http.Request, l
 
 	w.WriteHeader(http.StatusCreated)
 	fmt.Fprint(w, fmt.Sprintf(`{"id":%d}`, newId))
+}
+
+func removeCategoryHandler(user *userCtx, w http.ResponseWriter, r *http.Request, logPrefix string) {
+	logD.Println("delete cat handler!!!")
 }
 
 func activitiesListHandler(user *userCtx, w http.ResponseWriter, r *http.Request, logPrefix string) {
