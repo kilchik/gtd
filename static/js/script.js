@@ -7,13 +7,9 @@ function logI(msg) {
     console.info("[I]", msg);
 }
 
-function logE(msg) {
-    console.error("[E]", msg);
-}
-
 function render() {
     "use strict";
-    $("#mainContainer .content").hide();
+    $("#mainContainer").find(".content").hide();
     $("#notallowed-alert").hide();
 
     if (isLoggedIn()) {
@@ -27,7 +23,7 @@ function render() {
 }
 
 function generateAddActivity(catId, nameInput, pomsInput) {
-    logD(`generating add activity function with catId=${catId}, nameInput=${nameInput}`)
+    logD(`generating add activity function with catId=${catId}, nameInput=${nameInput}`);
     return function () {
         // TODO: WHY ON EARTH?! catId is called but nameInput.val() not yet
         addActivity(catId, nameInput.val(), parseInt(pomsInput.val(), 10));
@@ -116,7 +112,7 @@ function generateCatHistTable(catId, actList, hist) {
     return table;
 }
 
-function generateAddActivityForm(catId) {
+function generateAddActivityForm() {
     logD("generating add-activity form");
     let form = document.createElement("form");
     form.setAttribute("class", "form-inline");
@@ -157,7 +153,7 @@ async function fetchCategories() {
 
     return $.when($.ajax({
         type: "GET",
-        url: "categories",
+        url: "categories/",
         dataType: "json",
         beforeSend: function (xhr) {
             let tokenHdr = "Bearer " + token;
@@ -237,7 +233,7 @@ function checkLoginState(refresh) {
                 let tokenHdr = "Bearer " + token;
                 xhr.setRequestHeader('Authorization', tokenHdr);
             },
-            complete: function (xhr, textStatus) {
+            complete: function (xhr) {
                 logD("users/new status: " + xhr.status);
                 if (xhr.status === 403) {
                     let naalert = $("#notallowed-alert");
@@ -335,10 +331,10 @@ function createCategory() {
             xhr.setRequestHeader('Authorization', tokenHdr);
         },
         success: function (response) {
-            $('#newCatDialog').hide();
+            $('#new-cat-doc').hide();
             let pill = createCategoryPill(response.id, name);
             let allPills = $('#catPills');
-            let pillsNum = $('#catPills>li').length;
+            let pillsNum = allPills.find(" > li").length;
 
             logD(`pills num: ${pillsNum}`);
             let viewId = -1;
@@ -351,7 +347,7 @@ function createCategory() {
 
             appendCatView(viewId, response.id, null, null);
         },
-        complete: function (xobj, code) {
+        complete: function (xobj) {
             if (xobj.code !== 200) {
                 logD("categories/new completed with code: ", xobj.code);
             }
@@ -359,8 +355,33 @@ function createCategory() {
     });
 }
 
+function removeCategory() {
+    logD(`removing category`);
+    let token = localStorage.getItem("access-token");
+    let catId = $("#catPills").find(".active").attr("data-id");
+    $.ajax({
+        type: "DELETE",
+        url: "categories/"+catId,
+        beforeSend: function (xhr) {
+            let tokenHdr = "Bearer " + token;
+            xhr.setRequestHeader('Authorization', tokenHdr);
+        },
+        success: function () {
+            logD("removed category successfully");
+            location.reload();
+        },
+        complete: function (xobj) {
+            $('#remove-cat-doc').hide();
+            if (xobj.code !== 200) {
+                logD("remove category failed: ", xobj.code);
+            }
+        }
+    });
+}
+
 function createCategoryPill(id, name) {
     let newItem = document.createElement("li");
+    newItem.setAttribute("data-id", id);
     newItem.setAttribute("role", "presentation");
 
     let link = document.createElement("a");
@@ -375,7 +396,7 @@ function createCategoryPill(id, name) {
 function showCategoriesNavigation(cats) {
     logD("show categories navigation");
     let pillsNav = document.getElementById("catPills");
-    cats.forEach(function (item, i, cats) {
+    cats.forEach(function (item, i) {
         let pill = createCategoryPill(item.id, item.name);
         if (i === 0) {
             pill.setAttribute("class", "active");
@@ -405,7 +426,7 @@ function addActivity(catId, actName, actPoms) {
             logD("response: " + response);
             let r = createActRow(response.id, actName, actPoms, null);
 
-            let tbody = $(`#cat${catId} tbody`);
+            let tbody = $("#cat${catId}").find("tbody");
             if (tbody.length === 0) {
                 let actList = [
                     {
@@ -415,7 +436,6 @@ function addActivity(catId, actName, actPoms) {
                     }
                 ];
 
-                let actId = response.id;
                 let actHist = {
                     actId : [0,0,0,0,0,0,0]
                 };

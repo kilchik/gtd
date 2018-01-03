@@ -251,7 +251,7 @@ func createTables() error {
 
 // Handlers -->
 
-func newUserHandler(user *userCtx, w http.ResponseWriter, r *http.Request, logPrefix string) {
+func newUserHandler(user *userCtx, w http.ResponseWriter, _ *http.Request, logPrefix string) {
 	if user.Id == nil {
 		logD.Printf("no user with fb id=%s found; creating new user record", user.fbId)
 		var err error
@@ -373,7 +373,7 @@ func historyHandler(user *userCtx, w http.ResponseWriter, r *http.Request, logPr
 	fmt.Fprint(w, string(respBody))
 }
 
-func categoriesListHandler(user *userCtx, w http.ResponseWriter, r *http.Request, logPrefix string) {
+func categoriesListHandler(user *userCtx, w http.ResponseWriter, _ *http.Request, logPrefix string) {
 	if user.Id == nil {
 		forbidden(logPrefix+"user not found in db", nil, w)
 		return
@@ -450,7 +450,50 @@ func newCategoryHandler(user *userCtx, w http.ResponseWriter, r *http.Request, l
 }
 
 func removeCategoryHandler(user *userCtx, w http.ResponseWriter, r *http.Request, logPrefix string) {
-	logD.Println("delete cat handler!!!")
+	if user.Id == nil {
+		forbidden(logPrefix+"user not found in db", nil, w)
+		return
+	}
+
+	parts := strings.Split(r.URL.Path, "/")
+	if len(parts) < 2 {
+		internalError(logPrefix+"invalid url", nil, w)
+		return
+	}
+
+	catId, err := strconv.ParseInt(parts[len(parts)-1], 10, 64)
+	if err != nil {
+		internalError(logPrefix+"convert category id to number: %v", err, w)
+		return
+	}
+
+	logD.Printf(logPrefix+"removing category %d", catId)
+
+	// Remove row from categories
+	stmt, err := db.Prepare(`DELETE FROM categories WHERE id=?;`)
+	if err != nil {
+		internalError(logPrefix+"failed to prepare delete query: %v", err, w)
+		return
+	}
+
+	if _, err = stmt.Exec(catId); err != nil {
+		internalError("exec remove category query", err, w)
+		return
+	}
+
+	// Remove corresponding rows from activities
+	stmt, err = db.Prepare(`DELETE FROM activities WHERE category_id=?;`)
+	if err != nil {
+		internalError(logPrefix+"failed to prepare delete query: %v", err, w)
+		return
+	}
+
+	if _, err = stmt.Exec(catId); err != nil {
+		internalError("exec remove activities query", err, w)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
 }
 
 func activitiesListHandler(user *userCtx, w http.ResponseWriter, r *http.Request, logPrefix string) {
