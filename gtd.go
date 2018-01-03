@@ -160,6 +160,7 @@ func main() {
 	routerCats.Handle("/", limitAllowedUsers(categoriesListHandler)).Methods("GET")
 	routerCats.Handle("/new", limitAllowedUsers(newCategoryHandler)).Methods("POST")
 	routerCats.Handle("/{id:[0-9]+}", limitAllowedUsers(removeCategoryHandler)).Methods("DELETE")
+	routerCats.Handle("/{id:[0-9]+}", limitAllowedUsers(updateCategoryHandler)).Methods("PUT")
 
 	routerActs := router.PathPrefix("/activities").Subrouter()
 	routerActs.Handle("", limitAllowedUsers(activitiesListHandler)).Methods("GET").
@@ -455,15 +456,9 @@ func removeCategoryHandler(user *userCtx, w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	parts := strings.Split(r.URL.Path, "/")
-	if len(parts) < 2 {
-		internalError(logPrefix+"invalid url", nil, w)
-		return
-	}
-
-	catId, err := strconv.ParseInt(parts[len(parts)-1], 10, 64)
+	catId, err := parseIdFromPathTail(r.URL.Path)
 	if err != nil {
-		internalError(logPrefix+"convert category id to number: %v", err, w)
+		badRequest(logPrefix+"invalid url: %v", err, w)
 		return
 	}
 
@@ -490,6 +485,49 @@ func removeCategoryHandler(user *userCtx, w http.ResponseWriter, r *http.Request
 
 	if _, err = stmt.Exec(catId); err != nil {
 		internalError("exec remove activities query", err, w)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+}
+
+func updateCategoryHandler(user *userCtx, w http.ResponseWriter, r *http.Request, logPrefix string) {
+	if user.Id == nil {
+		forbidden(logPrefix+"user not found in db", nil, w)
+		return
+	}
+
+	catId, err := parseIdFromPathTail(r.URL.Path)
+	if err != nil {
+		badRequest(logPrefix+"invalid url: %v", err, w)
+		return
+	}
+
+	var renameCategoryRequest struct {
+		Name string `json:"name"`
+	}
+	dec := json.NewDecoder(r.Body)
+	if err := dec.Decode(&renameCategoryRequest); err != nil {
+		badRequest(logPrefix+"decode rename category request body", err, w)
+		return
+	}
+
+	newCatName := renameCategoryRequest.Name
+	if len(newCatName) == 0 {
+		badRequest(logPrefix+"empty category name", nil, w)
+		return
+	}
+
+	logD.Printf(logPrefix+"renaming category %d", catId)
+
+	stmt, err := db.Prepare(`UPDATE categories SET name=? WHERE id=?;`)
+	if err != nil {
+		internalError(logPrefix+"failed to prepare delete query: %v", err, w)
+		return
+	}
+
+	if _, err = stmt.Exec(newCatName, catId); err != nil {
+		internalError("exec remove category query", err, w)
 		return
 	}
 

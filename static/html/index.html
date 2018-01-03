@@ -73,6 +73,26 @@
 </div><!-- /.modal -->
 
 
+<!-- modal window for renaming selected category -->
+<div id="rename-cat-dlg" class="modal fade" tabindex="-1" role="dialog">
+    <div id="rename-cat-doc" class="modal-dialog modal-sm" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h4 class="modal-title">Rename category</h4>
+            </div>
+            <div class="modal-body">
+                <input id="renameCategoryInput" type="text" class="form-control" placeholder="New category name">
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" data-dismiss="modal" onclick="renameCategory()">OK</button>
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div><!-- /.modal -->
+
+
 <!-- navbar container -->
 <nav class="navbar navbar-inverse">
     <div class="container">
@@ -88,7 +108,7 @@
                     <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">Category<span class="caret"></span></a>
                     <ul class="dropdown-menu">
                         <li data-toggle="modal" data-target="#new-cat-dlg"><a href="#">New</a></li>
-                        <li><a href="#">Rename</a></li>
+                        <li data-toggle="modal" data-target="#rename-cat-dlg"><a href="#">Rename</a></li>
                         <li data-toggle="modal" data-target="#remove-cat-dlg"><a href="#">Remove</a></li>
                         <li><a href="#">Edit history</a></li> <!---> show remove row / rename button-->
                     </ul>

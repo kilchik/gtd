@@ -3,6 +3,8 @@ package main
 import (
 	"fmt"
 	"net/http"
+	"strconv"
+	"strings"
 	"time"
 )
 
@@ -56,5 +58,21 @@ func weekdays(today time.Time) (days [7]string) {
 		d := today.AddDate(0, 0, -decrIdx)
 		days[6-decrIdx] = d.Format("Jan 2\nMon")
 	}
+	return
+}
+
+func parseIdFromPathTail(urlPath string) (catId int64, err error) {
+	parts := strings.Split(urlPath, "/")
+	if len(parts) < 2 {
+		err = fmt.Errorf("number of path parts is %d", len(parts))
+		return
+	}
+
+	catId, err = strconv.ParseInt(parts[len(parts)-1], 10, 64)
+	if err != nil {
+		err = fmt.Errorf("convert category id to number: %v", err)
+		return
+	}
+
 	return
 }

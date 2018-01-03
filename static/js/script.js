@@ -379,6 +379,32 @@ function removeCategory() {
     });
 }
 
+function renameCategory() {
+    logD(`renaming category`);
+    let token = localStorage.getItem("access-token");
+    let catId = $("#catPills").find(".active").attr("data-id");
+    let newName = $("#renameCategoryInput").val();
+    $.ajax({
+        type: "PUT",
+        url: "categories/"+catId,
+        data: `{"name":"${newName}"}`,
+        beforeSend: function (xhr) {
+            let tokenHdr = "Bearer " + token;
+            xhr.setRequestHeader('Authorization', tokenHdr);
+        },
+        success: function () {
+            logD("renamed category successfully");
+            location.reload();
+        },
+        complete: function (xobj) {
+            $('#rename-cat-doc').hide();
+            if (xobj.code !== 200) {
+                logD("remove category failed: ", xobj.code);
+            }
+        }
+    });
+}
+
 function createCategoryPill(id, name) {
     let newItem = document.createElement("li");
     newItem.setAttribute("data-id", id);
@@ -426,7 +452,7 @@ function addActivity(catId, actName, actPoms) {
             logD("response: " + response);
             let r = createActRow(response.id, actName, actPoms, null);
 
-            let tbody = $("#cat${catId}").find("tbody");
+            let tbody = $(`#cat${catId}`).find("tbody");
             if (tbody.length === 0) {
                 let actList = [
                     {
