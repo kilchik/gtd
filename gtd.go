@@ -166,6 +166,8 @@ func main() {
 	routerActs.Handle("", limitAllowedUsers(activitiesListHandler)).Methods("GET").
 		Queries("cat_id", "{cat_id:[0-9]+}")
 	routerActs.Handle("/new", limitAllowedUsers(newActivityHandler)).Methods("POST")
+	routerActs.Handle("/{id:[0-9]+}", limitAllowedUsers(removeActivityHandler)).Methods("DELETE")
+	routerActs.Handle("/{id:[0-9]+}", limitAllowedUsers(updateActivityHandler)).Methods("PUT")
 
 	router.Handle("/history", limitAllowedUsers(historyHandler)).Methods("GET").
 		Queries("cat_id", "{cat_id:[0-9]+}")
@@ -522,7 +524,7 @@ func updateCategoryHandler(user *userCtx, w http.ResponseWriter, r *http.Request
 
 	stmt, err := db.Prepare(`UPDATE categories SET name=? WHERE id=?;`)
 	if err != nil {
-		internalError(logPrefix+"failed to prepare delete query: %v", err, w)
+		internalError(logPrefix+"failed to prepare update query: %v", err, w)
 		return
 	}
 
@@ -622,6 +624,78 @@ IFNULL(max(vorder), 0) FROM activities) + 1);`)
 
 	w.WriteHeader(http.StatusCreated)
 	fmt.Fprint(w, fmt.Sprintf(`{"id":%d}`, newId))
+}
+
+func removeActivityHandler(user *userCtx, w http.ResponseWriter, r *http.Request, logPrefix string) {
+	if user.Id == nil {
+		forbidden(logPrefix+"user not found in db", nil, w)
+		return
+	}
+
+	actId, err := parseIdFromPathTail(r.URL.Path)
+	if err != nil {
+		badRequest(logPrefix+"invalid url: %v", err, w)
+		return
+	}
+
+	logD.Printf(logPrefix+"removing activity %d", actId)
+
+	// Remove row from activities
+	stmt, err := db.Prepare(`DELETE FROM activities WHERE id=?;`)
+	if err != nil {
+		internalError(logPrefix+"failed to prepare delete query: %v", err, w)
+		return
+	}
+
+	if _, err = stmt.Exec(actId); err != nil {
+		internalError("exec remove activity query", err, w)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+}
+
+func updateActivityHandler(user *userCtx, w http.ResponseWriter, r *http.Request, logPrefix string) {
+	if user.Id == nil {
+		forbidden(logPrefix+"user not found in db", nil, w)
+		return
+	}
+
+	actId, err := parseIdFromPathTail(r.URL.Path)
+	if err != nil {
+		badRequest(logPrefix+"invalid url: %v", err, w)
+		return
+	}
+
+	var updateActivityRequest struct {
+		NewName string `json:"name"`
+		NewNpom int    `json:"npom"`
+	}
+	dec := json.NewDecoder(r.Body)
+	if err := dec.Decode(&updateActivityRequest); err != nil {
+		badRequest(logPrefix+"decode update activity request body", err, w)
+		return
+	}
+
+	if len(updateActivityRequest.NewName) == 0 {
+		badRequest(logPrefix+"empty activity name", nil, w)
+		return
+	}
+
+	logD.Printf(logPrefix+"updating activity %d", actId)
+
+	stmt, err := db.Prepare(`UPDATE activities SET name=?, npom=? WHERE id=?;`)
+	if err != nil {
+		internalError(logPrefix+"failed to prepare update query: %v", err, w)
+		return
+	}
+
+	if _, err = stmt.Exec(updateActivityRequest.NewName, updateActivityRequest.NewNpom, actId); err != nil {
+		internalError("exec remove activity query", err, w)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
 }
 
 // <-- Handlers
