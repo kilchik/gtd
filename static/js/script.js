@@ -1,10 +1,21 @@
 
+let EditActionType = {
+    Update: 1,
+    Remove: 2
+};
+
+let editActionsQueue = [];
+
 function logD(msg) {
     console.info("[D]", msg);
 }
 
 function logI(msg) {
     console.info("[I]", msg);
+}
+
+function logE(msg) {
+    console.error("[E]", msg);
 }
 
 function render() {
@@ -118,8 +129,8 @@ function generateAddActivityForm() {
     form.setAttribute("class", "form-inline");
 
     form.innerHTML = `
-<form id="addActivityForm" class="form-inline">
-     <div class="form-group">
+<form class="add-activity-form form-inline">
+    <div class="form-group">
         <label class="sr-only" for="new-activity-name">Name of activity to add</label>
         <input type="text" class="new-activity-name form-control" placeholder="Activity">
     </div>
@@ -128,11 +139,12 @@ function generateAddActivityForm() {
         <input type="number" class="new-activity-poms form-control" placeholder="1">
     </div>
     <button type="submit" class="add-activity-button btn btn-primary">Add activity</button>
+    <button id="cancelEditingButton" onclick="cancelEditing()" type="button" style="visibility:hidden;" class="btn pull-right">Cancel</button>
+    <button id="stopEditingButton" onclick="finalizeEditing()" type="button" style="visibility:hidden;" class="btn btn-danger pull-right">Done</button>
 </form>
 `;
     return form;
 }
-
 
 function renderNotAuthorized() {
     logD("rendering unauthorized");
@@ -199,7 +211,6 @@ async function fetchHistory(catId) {
         },
     }));
 }
-
 
 function showUserButton(authorized) {
     if (authorized) {
@@ -297,10 +308,15 @@ function cellClass(real, actPoms) {
     return cls;
 }
 
+function passIdToModal(actId) {
+    $("#done-editing-button").attr("data-id", actId);
+}
+
 function createActRow(actId, actName, actPoms, actHist) {
     logD(`creating row for action with id=${actId}, name=${actName}, poms=${actPoms}, hist=${actHist}`);
 
     let row = document.createElement("tr");
+    row.setAttribute("data-id", actId);
     row.innerHTML += `<th scope="row">${actName} (${actPoms})</th>`;
     for (i = 0; i < 6; ++i) {
         let real = 0;
@@ -311,10 +327,120 @@ function createActRow(actId, actName, actPoms, actHist) {
     }
 
     let todayVal = parseInt(actHist ? actHist[6] : '0');
-    let addButton = `<button type="button" class="btn btn-default btn-xs" onclick="doPomodoro(${todayVal}+1, ${actId})"><span class="glyphicon glyphicon-plus"></span></button>`;
+    let addButton = `<button type="button" class="btn btn-default btn-xs add-pom-button" onclick="doPomodoro(${todayVal}+1, ${actId})"><span class="glyphicon glyphicon-plus"></span></button>`;
 
     row.innerHTML += `<td class="${cellClass(todayVal, actPoms)}"><div id="cell${actId}" class="pull-left">${todayVal}</div><div class="pull-right">${addButton}</div></td>`;
+
+    let editGlyph = `<span class="glyphicon glyphicon-edit"></span>`;
+    let editButton = `<button type="button" class="btn btn-default btn-xs edit-act-button" style="visibility: hidden" data-toggle="modal" onclick="passIdToModal(${actId})" data-target="#edit-act-dlg">${editGlyph}</button>`;
+
+    let deleteGlyph = `<span class="glyphicon glyphicon-remove"></span>`;
+    let deleteButton = `<button type="button" class="btn btn-default btn-xs remove-act-button" style="visibility: hidden" onclick="removeActivity(${actId})">${deleteGlyph}</button>`;
+
+    row.innerHTML += `<td>${editButton}${deleteButton}</td>`;
     return row;
+}
+
+function addEditHistoryAction(action) {
+    logD("addEditHistoryAction " + JSON.stringify(action));
+    editActionsQueue.push(action);
+}
+
+function updateActivity() {
+    let id = $("#done-editing-button").attr("data-id");
+    logD(`updateActivity(${id})`);
+
+    let newName = $("#new-activity-name").val();
+    let newNpom = $("#new-activity-poms").val();
+
+    let rowHeader = $(`tr[data-id=${id}]`).find("th");
+    rowHeader.text(`${newName} (${newNpom})`);
+
+    addEditHistoryAction({type: EditActionType.Update, id: id, name: newName, npom: newNpom});
+}
+
+function removeActivity(id) {
+    logD(`removeActivity(${id})`);
+
+    $(`[data-id=${id}]`).remove();
+
+    addEditHistoryAction({type: EditActionType.Remove, id: id});
+}
+
+
+function processErrorWhileEditingHist(errorMsg) {
+    logE(errorMsg);
+
+    // TODO: show alert or msg with error
+}
+
+function cancelEditing() {
+    logD("cancel editing");
+    toggleEditView(false);
+}
+
+async function finalizeEditing() {
+    logD("finish editing");
+
+    let token = localStorage.getItem("access-token");
+    for (let actId = 0, a = editActionsQueue[actId]; actId < editActionsQueue.length; ++actId) {
+        logD("iterating: " + JSON.stringify(a));
+        try {
+            switch (a.type) {
+                case EditActionType.Remove:
+                    await $.when($.ajax({
+                        type: "DELETE",
+                        url: "activities/" + a.id,
+                        beforeSend: function (xhr) {
+                            let tokenHdr = "Bearer " + token;
+                            xhr.setRequestHeader('Authorization', tokenHdr);
+                        },
+                    }));
+                    break;
+                case EditActionType.Update:
+                    await $.when($.ajax({
+                        type: "PUT",
+                        url: "activities/" + a.id,
+                        data: `{"name":"${a.name}", "npom":${a.npom}}`,
+                        beforeSend: function (xhr) {
+                            let tokenHdr = "Bearer " + token;
+                            xhr.setRequestHeader('Authorization', tokenHdr);
+                        },
+                    }));
+                    break;
+                default:
+                    logE("unknown edit action");
+            }
+        }
+        catch (e) {
+            processErrorWhileEditingHist(`Error occured while editing activity`);
+        }
+    }
+
+    toggleEditView(false);
+}
+
+function toggleVisibility(elements, defaultValue, on) {
+    let newValue = defaultValue;
+    if (!on) {
+        newValue = defaultValue === "visible" ? "hidden" : "visible";
+    }
+    elements.css("visibility", newValue);
+}
+
+function toggleEditView(on) {
+    let activeView = $("#histView").find(".active");
+
+    toggleVisibility(activeView.find(".add-pom-button"), "hidden", on);
+    toggleVisibility(activeView.find(".edit-act-button"), "visible", on);
+    toggleVisibility(activeView.find(".remove-act-button"), "visible", on);
+
+    let form = activeView.find(".form-inline");
+    toggleVisibility(form.find("#cancelEditingButton"), "visible", on);
+    toggleVisibility(form.find("#stopEditingButton"), "visible", on);
+    toggleVisibility(form.children().not("#cancelEditingButton").not("#stopEditingButton"), "hidden", on);
+
+    $(".tab-content").css({"border-color": on ? "red" : "white"});
 }
 
 function createCategory() {
@@ -430,6 +556,14 @@ function showCategoriesNavigation(cats) {
         pillsNav.appendChild(pill);
     });
 
+    // set edit-history action
+    $("#categoriesList").find("a:contains('Edit history')").click(function () {
+        startEditingTable();
+    });
+}
+
+function startEditingTable() {
+    toggleEditView(true);
 }
 
 function addActivity(catId, actName, actPoms) {
@@ -452,7 +586,8 @@ function addActivity(catId, actName, actPoms) {
             logD("response: " + response);
             let r = createActRow(response.id, actName, actPoms, null);
 
-            let tbody = $(`#cat${catId}`).find("tbody");
+            let cat = $(`#cat${catId}`);
+            let tbody = cat.find("tbody");
             if (tbody.length === 0) {
                 let actList = [
                     {
@@ -467,7 +602,7 @@ function addActivity(catId, actName, actPoms) {
                 };
 
                 let tbl = generateCatHistTable(catId, actList, actHist);
-                $(`#cat${catId}`).prepend(tbl);
+                cat.prepend(tbl);
             }
             tbody.append(r);
         },

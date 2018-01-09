@@ -63,9 +63,8 @@ cp ../gtd.conf .
 cd ..
 tar -zcvf ${RPM_TOPDIR}/SOURCES/${SOURCE_NAME}.tar.gz ${SOURCE_NAME}
 
-echo '############################################################'
 
-VERSION_SUFFIX="%{nil}" # this protects against RPM's error "macro has empty body"
+VERSION_SUFFIX="%{nil}"
 if [[ "${BRANCH_FOR_RPM}" != "master" ]]; then
   VERSION_SUFFIX=".${BRANCH_FOR_RPM}.${LAST_COMMIT_DATETIME}"
 fi
