@@ -146,6 +146,7 @@ func main() {
 
 	router := mux.NewRouter()
 	router.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		logD.Println("handling root")
 		t, err := template.ParseFiles(conf.params.StaticPath + "html/index.html")
 		if err != nil {
 			internalError("parse template file", err, w)
