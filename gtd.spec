@@ -12,6 +12,7 @@ Group:          System Environment/Libraries
 Summary:        web service for monitoring regular tasks completion
 
 
+Requires: syslog-ng
 Requires(post): systemd
 Requires(preun): systemd
 Requires(postun): systemd
@@ -102,6 +103,8 @@ systemctl daemon-reload >/dev/null 2>&1 || :
 
 %postun
 %systemd_postun %{name}.service
+
+%dir /usr/share/%{name}
 
 %files
 %{__bindir}/%{name}
